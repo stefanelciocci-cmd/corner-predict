@@ -1,8 +1,11 @@
 import sqlite3
 import json
+import os
 from datetime import datetime
 from contextlib import contextmanager
 from config import DATABASE_PATH
+
+os.makedirs(os.path.dirname(DATABASE_PATH) or ".", exist_ok=True)
 
 
 @contextmanager
