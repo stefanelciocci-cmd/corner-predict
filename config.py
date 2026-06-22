@@ -6,7 +6,7 @@ load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "")
 API_FOOTBALL_KEY = os.getenv("API_FOOTBALL_KEY", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-DATABASE_PATH = os.getenv("DATABASE_PATH", "/app/football_bot.db")
+DATABASE_PATH = os.getenv("DATABASE_PATH", "/tmp/football_bot.db")
 
 # Prediction thresholds
 MIN_CONFIDENCE = 0.65          # minimum confidence to push a live alert
