@@ -7,7 +7,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 from config import TELEGRAM_TOKEN, MATCH_SCAN_HOUR, RESULT_CHECK_HOUR
 from data.database import init_db
 from bot.handlers import (
-    cmd_start, cmd_auth, cmd_stats, cmd_help, cmd_scan, unknown_command
+    cmd_start, cmd_auth, cmd_stats, cmd_help, cmd_scan, cmd_debug, unknown_command
 )
 from scheduler.jobs import morning_scan, live_poll, nightly_resolve
 
@@ -26,6 +26,7 @@ def build_app():
     app.add_handler(CommandHandler("stats", cmd_stats))
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("scan", cmd_scan))
+    app.add_handler(CommandHandler("debug", cmd_debug))
     app.add_handler(MessageHandler(filters.COMMAND, unknown_command))
 
     return app

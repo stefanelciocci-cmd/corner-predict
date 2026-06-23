@@ -143,6 +143,41 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def cmd_debug(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Fetch today's World Cup fixtures raw and report what the API returns."""
+    user = update.effective_user
+    db_user = get_user(user.id)
+    if not db_user or not db_user["is_active"]:
+        await update.message.reply_text("Authenticate first with /auth")
+        return
+
+    await update.message.reply_text("🔍 Querying API directly...")
+    import aiohttp
+    from data import api_client
+    from datetime import date
+
+    async with aiohttp.ClientSession() as session:
+        # Check World Cup today
+        wc_today = await api_client.get_fixtures_today(session, 1)
+        wc_tomorrow = await api_client.get_fixtures_tomorrow(session, 1)
+
+        lines = [f"*API Debug Report*\n━━━━━━━━━━━━━━━━━━━━"]
+        lines.append(f"Today ({date.today()}): *{len(wc_today)}* WC fixtures")
+        for f in wc_today[:5]:
+            home, away = api_client.get_fixture_teams(f)
+            status = api_client.get_fixture_status(f)
+            lines.append(f"  • {home.get('name')} vs {away.get('name')} [{status}]")
+
+        lines.append(f"Tomorrow: *{len(wc_tomorrow)}* WC fixtures")
+        for f in wc_tomorrow[:5]:
+            home, away = api_client.get_fixture_teams(f)
+            lines.append(f"  • {home.get('name')} vs {away.get('name')}")
+
+        lines.append(f"\nTotal API requests used: {api_client._request_count}")
+
+    await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+
+
 async def cmd_scan(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     db_user = get_user(user.id)
