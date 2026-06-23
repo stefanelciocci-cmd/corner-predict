@@ -42,8 +42,8 @@ TRACKED_LEAGUES = {
     "UEFA Nations League":      {"id": 5,   "country": "Europe"},
 }
 
-# Default season for club leagues (API-Football free tier: max 2024)
-CURRENT_SEASON = 2024
+# Default season for club leagues
+CURRENT_SEASON = 2025
 
 # Some competitions run on different seasons — override per league
 LEAGUE_SEASONS = {

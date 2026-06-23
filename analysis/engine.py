@@ -9,7 +9,7 @@ import aiohttp
 from data import api_client
 from data.database import (
     add_to_watch_list, get_watch_list, update_watch_alert,
-    mark_watch_finished, save_prediction, prediction_exists,
+    mark_watch_finished, mark_start_notified, save_prediction, prediction_exists,
 )
 from analysis.features import MatchContext
 from analysis.corners import analyse_pre_match, analyse_live
@@ -65,25 +65,52 @@ async def pre_match_scan(session: aiohttp.ClientSession, fixture: dict, league_n
     return True
 
 
-async def live_scan(session: aiohttp.ClientSession) -> List[dict]:
+async def live_scan(session: aiohttp.ClientSession):
+    """Returns (alerts, start_notifications)."""
     watch_list = get_watch_list()
     if not watch_list:
-        return []
+        return [], []
+
+    # One request gets all currently live fixtures
+    live_fixtures = await api_client.get_live_fixtures(session)
+    live_by_id = {api_client.get_fixture_id(f): f for f in live_fixtures}
 
     alerts = []
+    start_notifications = []
+
     for watched in watch_list:
         fixture_id = watched["fixture_id"]
         try:
-            fixture = await api_client.get_fixture_by_id(session, fixture_id)
+            fixture = live_by_id.get(fixture_id)
+
+            # If not in live feed, check directly (may be finished or not started yet)
+            if not fixture:
+                fixture = await api_client.get_fixture_by_id(session, fixture_id)
             if not fixture:
                 continue
 
             status = api_client.get_fixture_status(fixture)
-            if status in ("FINISHED", "AWARDED", "CANCELLED", "POSTPONED"):
+            if status in ("FT", "AET", "PEN", "AWD", "CANC", "PST", "ABD"):
                 mark_watch_finished(fixture_id)
                 continue
-            if status not in ("IN_PLAY", "PAUSED"):
+            if status not in ("1H", "2H", "ET", "HT", "BT", "LIVE"):
                 continue
+
+            # Notify when match first goes live
+            if not watched["notified_start"]:
+                home_name = watched["home_team"]
+                away_name = watched["away_team"]
+                league = watched["league_name"]
+                proj = watched.get("pre_match_expected") or 0
+                start_notifications.append(
+                    f"🔴 *Match Started — Now Analyzing*\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n"
+                    f"⚽ *{home_name}* vs *{away_name}*\n"
+                    f"🏆 {league}\n"
+                    f"📊 Pre-match projected corners: *{proj:.1f}*\n\n"
+                    f"_Tracking at minutes 25, 35, 45, 55, 65, 75..._"
+                )
+                mark_start_notified(fixture_id)
 
             stats_list = await api_client.get_fixture_statistics(session, fixture_id)
             live_stats = api_client.build_live_stats(fixture, stats_list)
@@ -99,7 +126,7 @@ async def live_scan(session: aiohttp.ClientSession) -> List[dict]:
                 fixture_id=fixture_id,
                 home_team=watched["home_team"],
                 away_team=watched["away_team"],
-                league_id=0,
+                league_id=league_id,
                 league_name=watched["league_name"],
                 match_datetime=watched["match_datetime"],
                 home_profile=home_profile,
@@ -122,7 +149,7 @@ async def live_scan(session: aiohttp.ClientSession) -> List[dict]:
 
             save_prediction({
                 "fixture_id": fixture_id,
-                "league_id": 0,
+                "league_id": league_id,
                 "league_name": watched["league_name"],
                 "home_team": watched["home_team"],
                 "away_team": watched["away_team"],
@@ -140,4 +167,4 @@ async def live_scan(session: aiohttp.ClientSession) -> List[dict]:
         except Exception as e:
             logger.error("Live scan error fixture %d: %s", fixture_id, e)
 
-    return alerts
+    return alerts, start_notifications

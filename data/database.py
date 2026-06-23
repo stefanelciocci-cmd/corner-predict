@@ -156,6 +156,7 @@ def init_db():
                     pre_match_expected  REAL,
                     last_alert_minute   INTEGER,
                     alerts_sent         INTEGER DEFAULT 0,
+                    notified_start      INTEGER DEFAULT 0,
                     is_finished         INTEGER DEFAULT 0,
                     added_at            TIMESTAMP DEFAULT NOW()
                 )
@@ -243,6 +244,7 @@ def init_db():
                     pre_match_expected  REAL,
                     last_alert_minute   INTEGER,
                     alerts_sent         INTEGER DEFAULT 0,
+                    notified_start      INTEGER DEFAULT 0,
                     is_finished         INTEGER DEFAULT 0,
                     added_at            TEXT DEFAULT (datetime('now'))
                 );
@@ -579,6 +581,13 @@ def update_watch_alert(fixture_id: int, minute: int):
             UPDATE live_watch SET last_alert_minute={ph}, alerts_sent=alerts_sent+1
             WHERE fixture_id={ph}
         """, (minute, fixture_id))
+
+
+def mark_start_notified(fixture_id: int):
+    ph = _ph()
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(f"UPDATE live_watch SET notified_start=1 WHERE fixture_id={ph}", (fixture_id,))
 
 
 def mark_watch_finished(fixture_id: int):

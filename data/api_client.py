@@ -1,8 +1,7 @@
 from typing import Optional
 """
 API client for API-Football v3 (api-sports.io).
-Provides real corner stats, shots, possession, live data.
-Free tier: 100 requests/day.
+Paid plan: 300 requests/minute.
 """
 import aiohttp
 import asyncio
@@ -16,7 +15,7 @@ logger = logging.getLogger(__name__)
 HEADERS = {"x-apisports-key": API_FOOTBALL_KEY}
 
 _request_count = 0
-MAX_DAILY_REQUESTS = 95
+MAX_DAILY_REQUESTS = 9000  # paid plan: ~300/min, no meaningful daily cap
 
 
 async def _get(session: aiohttp.ClientSession, endpoint: str, params: dict = None, _retry: bool = True):
@@ -83,6 +82,12 @@ async def get_fixture_statistics(session, fixture_id: int) -> list:
     return r if isinstance(r, list) else []
 
 
+async def get_live_fixtures(session) -> list:
+    """Fetch all currently live fixtures in one request (paid plan feature)."""
+    r = await _get(session, "fixtures", {"live": "all"})
+    return r if isinstance(r, list) else []
+
+
 async def get_leagues_fixtures(session, league_ids: list, for_tomorrow=True) -> list:
     all_fixtures = []
     fn = get_fixtures_tomorrow if for_tomorrow else get_fixtures_today
@@ -90,7 +95,7 @@ async def get_leagues_fixtures(session, league_ids: list, for_tomorrow=True) -> 
         try:
             fixtures = await fn(session, lid)
             all_fixtures.extend(fixtures)
-            await asyncio.sleep(7)  # stay within 10 req/min rate limit
+            await asyncio.sleep(0.2)
         except RuntimeError as e:
             logger.warning("%s", e)
             break
@@ -168,7 +173,7 @@ async def build_team_profile(session, team_id: int, league_id: int) -> TeamProfi
 
         stats = await _get(session, "fixtures/statistics", {"fixture": fid})
         if not isinstance(stats, list) or len(stats) < 2:
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(0.2)
             continue
 
         # Determine which index is this team
@@ -178,7 +183,7 @@ async def build_team_profile(session, team_id: int, league_id: int) -> TeamProfi
                 team_index = idx
                 break
         if team_index is None:
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(0.2)
             continue
 
         opponent_index = 1 - team_index if len(stats) == 2 else None
@@ -227,7 +232,7 @@ async def build_team_profile(session, team_id: int, league_id: int) -> TeamProfi
         if at is not None:
             attacks_t.append(at)
 
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(0.2)
 
     n = len(corners_for)
     profile.matches_played = n or 1
@@ -313,7 +318,7 @@ async def build_h2h_profile(session, home_id: int, away_id: int) -> H2HProfile:
             shot_totals.append(shots)
         if fouls > 0:
             foul_totals.append(fouls)
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(0.2)
 
     n = len(corner_totals)
     if n > 0:
