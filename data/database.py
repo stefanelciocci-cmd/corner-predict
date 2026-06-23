@@ -171,6 +171,17 @@ def init_db():
                     INSERT INTO model_weights (feature, weight)
                     VALUES (%s, %s) ON CONFLICT (feature) DO NOTHING
                 """, (feature, weight))
+
+            # Migrations: add columns added after initial deploy
+            for tbl, col, defn in [
+                ("live_watch", "notified_start", "INTEGER DEFAULT 0"),
+                ("team_stats", "team_name", "TEXT DEFAULT ''"),
+                ("team_stats", "extra_json", "TEXT DEFAULT '{}'"),
+            ]:
+                try:
+                    cur.execute(f"ALTER TABLE {tbl} ADD COLUMN {col} {defn}")
+                except Exception:
+                    pass  # column already exists
         else:
             conn.executescript("""
                 CREATE TABLE IF NOT EXISTS users (

@@ -97,7 +97,7 @@ async def live_scan(session: aiohttp.ClientSession):
                 continue
 
             # Notify when match first goes live
-            if not watched["notified_start"]:
+            if not watched.get("notified_start", 0):
                 home_name = watched["home_team"]
                 away_name = watched["away_team"]
                 league = watched["league_name"]
