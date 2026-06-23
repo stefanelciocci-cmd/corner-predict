@@ -69,11 +69,6 @@ async def main():
     await app.updater.start_polling(drop_pending_updates=True)
 
     logger.info("Bot is running. Press Ctrl+C to stop.")
-
-    # Run an immediate scan on startup so the watch list is populated right away
-    logger.info("Running startup scan...")
-    asyncio.ensure_future(morning_scan())
-
     try:
         await asyncio.Event().wait()
     except (KeyboardInterrupt, SystemExit):

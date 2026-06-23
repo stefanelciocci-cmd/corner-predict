@@ -19,7 +19,7 @@ _request_count = 0
 MAX_DAILY_REQUESTS = 95
 
 
-async def _get(session: aiohttp.ClientSession, endpoint: str, params: dict = None):
+async def _get(session: aiohttp.ClientSession, endpoint: str, params: dict = None, _retry: bool = True):
     global _request_count
     if _request_count >= MAX_DAILY_REQUESTS:
         raise RuntimeError("Daily API request limit reached (95)")
@@ -27,8 +27,10 @@ async def _get(session: aiohttp.ClientSession, endpoint: str, params: dict = Non
     async with session.get(url, headers=HEADERS, params=params or {}) as resp:
         _request_count += 1
         if resp.status == 429:
-            logger.warning("Rate limited — waiting 30s")
-            await asyncio.sleep(30)
+            logger.warning("Rate limited — waiting 65s then retrying...")
+            await asyncio.sleep(65)
+            if _retry:
+                return await _get(session, endpoint, params, _retry=False)
             return {}
         if resp.status != 200:
             logger.error("API %s → %d", endpoint, resp.status)
@@ -36,7 +38,15 @@ async def _get(session: aiohttp.ClientSession, endpoint: str, params: dict = Non
         data = await resp.json()
         errors = data.get("errors", {})
         if errors:
-            logger.error("API errors: %s", errors)
+            # Rate limit can also come back as a 200 with errors dict
+            err_str = str(errors)
+            if "rateLimit" in err_str:
+                logger.warning("Rate limit in response — waiting 65s then retrying...")
+                await asyncio.sleep(65)
+                if _retry:
+                    return await _get(session, endpoint, params, _retry=False)
+            else:
+                logger.error("API errors: %s", errors)
             return {}
         return data.get("response", [])
 
@@ -80,7 +90,7 @@ async def get_leagues_fixtures(session, league_ids: list, for_tomorrow=True) -> 
         try:
             fixtures = await fn(session, lid)
             all_fixtures.extend(fixtures)
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(7)  # stay within 10 req/min rate limit
         except RuntimeError as e:
             logger.warning("%s", e)
             break
