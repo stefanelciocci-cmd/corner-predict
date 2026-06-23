@@ -5,3 +5,4 @@ apscheduler==3.10.4
 bcrypt==4.2.0
 python-dotenv==1.0.1
 requests==2.32.3
+psycopg2-binary==2.9.9
