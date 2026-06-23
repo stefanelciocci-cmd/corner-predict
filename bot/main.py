@@ -7,7 +7,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 from config import TELEGRAM_TOKEN, MATCH_SCAN_HOUR, RESULT_CHECK_HOUR
 from data.database import init_db
 from bot.handlers import (
-    cmd_start, cmd_auth, cmd_stats, cmd_help, unknown_command
+    cmd_start, cmd_auth, cmd_stats, cmd_help, cmd_scan, unknown_command
 )
 from scheduler.jobs import morning_scan, live_poll, nightly_resolve
 
@@ -25,6 +25,7 @@ def build_app():
     app.add_handler(CommandHandler("auth", cmd_auth))
     app.add_handler(CommandHandler("stats", cmd_stats))
     app.add_handler(CommandHandler("help", cmd_help))
+    app.add_handler(CommandHandler("scan", cmd_scan))
     app.add_handler(MessageHandler(filters.COMMAND, unknown_command))
 
     return app
@@ -68,6 +69,11 @@ async def main():
     await app.updater.start_polling(drop_pending_updates=True)
 
     logger.info("Bot is running. Press Ctrl+C to stop.")
+
+    # Run an immediate scan on startup so the watch list is populated right away
+    logger.info("Running startup scan...")
+    asyncio.ensure_future(morning_scan())
+
     try:
         await asyncio.Event().wait()
     except (KeyboardInterrupt, SystemExit):

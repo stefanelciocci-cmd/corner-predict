@@ -129,6 +129,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "*Commands:*\n"
         "• /start — register and get your password\n"
         "• /auth <password> — activate your account\n"
+        "• /scan — scan today's matches now\n"
         "• /stats — bot win rate and history\n"
         "• /help — this message\n\n"
         "*How predictions work:*\n"
@@ -140,6 +141,18 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "_Bet responsibly. This is not financial advice._",
         parse_mode=ParseMode.MARKDOWN,
     )
+
+
+async def cmd_scan(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    db_user = get_user(user.id)
+    if not db_user or not db_user["is_active"]:
+        await update.message.reply_text("You need to authenticate first. Use /start")
+        return
+    await update.message.reply_text("🔍 Scanning today's matches... I'll notify you when the watch list is ready.")
+    from scheduler.jobs import morning_scan
+    import asyncio
+    asyncio.ensure_future(morning_scan())
 
 
 async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):

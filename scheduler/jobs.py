@@ -21,15 +21,17 @@ logger = logging.getLogger(__name__)
 
 async def morning_scan():
     """
-    Scan tomorrow's fixtures across all leagues.
+    Scan today's + tomorrow's fixtures across all leagues.
     Adds high-corner-potential matches to the live watch list.
     Does NOT push alerts — just prepares the watch list.
     """
-    logger.info("Morning scan: building watch list for tomorrow...")
-    league_ids = [v["id"] for v in TRACKED_LEAGUES.values()]  # codes for football-data.org
+    logger.info("Morning scan: building watch list...")
+    league_ids = [v["id"] for v in TRACKED_LEAGUES.values()]
 
     async with aiohttp.ClientSession() as session:
-        fixtures = await api_client.get_leagues_fixtures(session, league_ids, for_tomorrow=True)
+        today_fixtures = await api_client.get_leagues_fixtures(session, league_ids, for_tomorrow=False)
+        tomorrow_fixtures = await api_client.get_leagues_fixtures(session, league_ids, for_tomorrow=True)
+        fixtures = today_fixtures + tomorrow_fixtures
         logger.info("Fetched %d fixtures to analyse", len(fixtures))
 
         added = 0
@@ -48,8 +50,7 @@ async def morning_scan():
                 logger.error("Pre-match scan error for fixture: %s", e)
 
     logger.info("Morning scan done. %d matches added to watch list.", added)
-    if added > 0:
-        await _push_watch_list_summary(added)
+    await _push_watch_list_summary(added)
 
 
 async def live_poll():
