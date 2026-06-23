@@ -81,11 +81,13 @@ async def live_poll():
 
 
 async def nightly_resolve():
-    """Check results for all pending predictions and update model weights."""
+    """Check results for all pending predictions, update weights, notify users."""
     logger.info("Nightly resolve: checking results...")
     async with aiohttp.ClientSession() as session:
-        await check_and_resolve(session)
-    logger.info("Nightly resolve complete.")
+        notifications = await check_and_resolve(session)
+    for msg in notifications:
+        await push_to_users(msg)
+    logger.info("Nightly resolve complete. %d results sent.", len(notifications))
 
 
 async def push_to_users(message: str):
