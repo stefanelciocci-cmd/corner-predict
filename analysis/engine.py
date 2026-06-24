@@ -90,10 +90,12 @@ async def live_scan(session: aiohttp.ClientSession):
                 continue
 
             status = api_client.get_fixture_status(fixture)
+            logger.info("Fixture %d %s vs %s — status: %s",
+                fixture_id, watched["home_team"], watched["away_team"], status)
             if status in ("FT", "AET", "PEN", "AWD", "CANC", "PST", "ABD"):
                 mark_watch_finished(fixture_id)
                 continue
-            if status not in ("1H", "2H", "ET", "HT", "BT", "LIVE"):
+            if status not in ("1H", "2H", "ET", "HT", "BT", "P", "LIVE"):
                 continue
 
             # Notify when match first goes live
@@ -138,6 +140,16 @@ async def live_scan(session: aiohttp.ClientSession):
 
             pred = analyse_live(ctx)
             if pred is None:
+                from analysis.features import compute_derived_signals
+                from analysis.scorer import score_signals
+                signals = compute_derived_signals(ctx)
+                result = score_signals(signals, is_live=True)
+                logger.info(
+                    "Fixture %d min=%d — confidence=%.2f (threshold=%.2f) projected=%.1f last_alert=%s",
+                    fixture_id, live_stats.minute, result["confidence"],
+                    0.65, signals.get("projected_corners_live", 0),
+                    watched["last_alert_minute"],
+                )
                 continue
 
             if prediction_exists(fixture_id):

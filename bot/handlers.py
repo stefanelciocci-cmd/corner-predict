@@ -143,6 +143,30 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def cmd_resolve(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Manually trigger result checking for all pending predictions."""
+    user = update.effective_user
+    db_user = get_user(user.id)
+    if not db_user or not db_user["is_active"]:
+        await update.message.reply_text("Authenticate first with /auth")
+        return
+
+    from data.database import get_pending_predictions
+    pending = get_pending_predictions()
+    if not pending:
+        await update.message.reply_text(
+            "⏳ No pending predictions to resolve yet.\n\n"
+            "Predictions are saved when the bot fires a live alert during a match. "
+            "Once a match finishes the result will be checked here."
+        )
+        return
+
+    await update.message.reply_text(f"🔄 Resolving {len(pending)} pending prediction(s)...")
+    from scheduler.jobs import nightly_resolve
+    import asyncio
+    asyncio.ensure_future(nightly_resolve())
+
+
 async def cmd_debug(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Fetch today's World Cup fixtures raw and report what the API returns."""
     user = update.effective_user
@@ -174,6 +198,15 @@ async def cmd_debug(update: Update, context: ContextTypes.DEFAULT_TYPE):
             lines.append(f"  • {home.get('name')} vs {away.get('name')}")
 
         lines.append(f"\nTotal API requests used: {api_client._request_count}")
+
+    from data.database import get_pending_predictions, get_watch_list
+    pending = get_pending_predictions()
+    watch = get_watch_list()
+    lines.append(f"\n*DB State*")
+    lines.append(f"Watch list (active): {len(watch)}")
+    lines.append(f"Pending predictions: {len(pending)}")
+    for p in pending[:3]:
+        lines.append(f"  • {p['home_team']} vs {p['away_team']} — conf {p['confidence']*100:.0f}%")
 
     await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
 

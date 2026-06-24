@@ -9,7 +9,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 DATABASE_PATH = os.getenv("DATABASE_PATH", "/tmp/football_bot.db")
 
 # Prediction thresholds
-MIN_CONFIDENCE = 0.65          # minimum confidence to push a live alert
+MIN_CONFIDENCE = 0.55          # minimum confidence to push a live alert
 MIN_ODDS = 1.50                # minimum estimated odds
 OVER_LINE = 9.5                # Over/Under line for total match corners
 
