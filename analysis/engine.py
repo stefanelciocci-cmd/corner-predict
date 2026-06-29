@@ -51,7 +51,7 @@ async def pre_match_scan(session: aiohttp.ClientSession, fixture: dict, league_n
 
     add_to_watch_list({
         "fixture_id": fixture_id,
-        "league_id": 0,
+        "league_id": league_id,
         "league_name": league_name,
         "home_team": ctx.home_team,
         "away_team": ctx.away_team,

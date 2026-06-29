@@ -68,7 +68,7 @@ async def live_poll():
     Sends 'match started' notification when a watched match kicks off.
     Pushes corner alerts when the model fires.
     """
-    logger.debug("Live poll running...")
+    logger.info("Live poll running...")
     async with aiohttp.ClientSession() as session:
         alerts, start_notifications = await live_scan(session)
 

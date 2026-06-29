@@ -27,6 +27,7 @@ SIGNAL_NORMS = {
     "referee_corner_avg":        {"neutral": 10.0,  "scale": 3.0,  "direction": 1},
     "referee_foul_avg":          {"neutral": 22.0,  "scale": 5.0,  "direction": 1},
     # Live
+    "projected_corners_live":    {"neutral": 9.5,   "scale": 3.0,  "direction": 1},
     "live_corner_rate":          {"neutral": 0.11,  "scale": 0.06, "direction": 1},
     "live_shot_rate":            {"neutral": 0.25,  "scale": 0.10, "direction": 1},
     "live_cross_rate":           {"neutral": 0.20,  "scale": 0.10, "direction": 1},
@@ -119,10 +120,11 @@ def score_signals(signals: dict, is_live: bool = False) -> dict:
 
     confidence = round(_sigmoid(avg_score), 3)
 
-    # Data quality penalty: fewer matches = lower confidence ceiling
-    matches = signals.get("_matches_played", 20)
-    quality = min(1.0, matches / 20)
-    confidence = round(confidence * (0.75 + 0.25 * quality), 3)
+    # Data quality penalty only in pre-match mode (live data is observed, not predicted)
+    if not is_live:
+        matches = signals.get("_matches_played", 20)
+        quality = min(1.0, matches / 10)
+        confidence = round(confidence * (0.85 + 0.15 * quality), 3)
 
     return {
         "score": round(avg_score, 3),

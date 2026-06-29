@@ -347,7 +347,6 @@ def save_prediction(data: dict) -> int:
                  match_datetime, market, prediction, confidence, estimated_odds,
                  stats_snapshot, llm_analysis, sent_at)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
-                ON CONFLICT DO NOTHING
             """, (
                 data["fixture_id"], data["league_id"], data["league_name"],
                 data["home_team"], data["away_team"], data["match_datetime"],

@@ -9,7 +9,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 DATABASE_PATH = os.getenv("DATABASE_PATH", "/tmp/football_bot.db")
 
 # Prediction thresholds
-MIN_CONFIDENCE = 0.55          # minimum confidence to push a live alert
+MIN_CONFIDENCE = 0.52          # minimum confidence to push a live alert
 MIN_ODDS = 1.50                # minimum estimated odds
 OVER_LINE = 9.5                # Over/Under line for total match corners
 
@@ -59,8 +59,8 @@ LEAGUE_SEASONS = {
     9:   2024,   # Copa America
     15:  2025,   # FIFA Club World Cup
     490: 2025,   # World Cup U20
-    2:   2024,   # Champions League
-    3:   2024,   # Europa League
+    2:   2025,   # Champions League
+    3:   2025,   # Europa League
 }
 
 # Scheduler times (UTC)

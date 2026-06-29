@@ -134,6 +134,9 @@ async def build_team_profile(session, team_id: int, league_id: int) -> TeamProfi
         profile.avg_fouls_committed = extra.get("avg_fouls_committed", 0.0)
         profile.avg_dangerous_attacks = extra.get("avg_dangerous_attacks", 0.0)
         profile.avg_attacks = extra.get("avg_attacks", 0.0)
+        profile.avg_blocked_shots = extra.get("avg_blocked_shots", 0.0)
+        profile.avg_offsides = extra.get("avg_offsides", 0.0)
+        profile.avg_yellow_cards = extra.get("avg_yellow_cards", 0.0)
         profile.crossing_index = extra.get("crossing_index", 0.0)
         profile.direct_play_index = extra.get("direct_play_index", 0.5)
         logger.debug("Team %d profile served from cache", team_id)
@@ -345,7 +348,7 @@ def build_live_stats(fixture: dict, statistics: list) -> LiveStats:
 
     status = fixture.get("fixture", {}).get("status", {})
     live.minute = int(status.get("elapsed") or 0)
-    live.is_first_half = status.get("short") in ("1H", "HT")
+    live.is_first_half = status.get("short") == "1H"
 
     goals = fixture.get("goals", {})
     live.home_score = goals.get("home") or 0
@@ -382,6 +385,12 @@ def build_live_stats(fixture: dict, statistics: list) -> LiveStats:
                 setattr(live, f"{side}_dangerous_attacks", v)
             elif "cross" in t:
                 setattr(live, f"{side}_crosses", v)
+
+    # Fix possession: if only one side parsed, derive the other
+    if live.home_possession != 50.0 and live.away_possession == 50.0:
+        live.away_possession = 100.0 - live.home_possession
+    elif live.away_possession != 50.0 and live.home_possession == 50.0:
+        live.home_possession = 100.0 - live.away_possession
 
     return live
 

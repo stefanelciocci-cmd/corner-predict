@@ -100,7 +100,7 @@ def analyse_live(ctx: MatchContext) -> Optional[CornerPrediction]:
     result = score_signals(signals, is_live=True)
     projected = signals.get("projected_corners_live", 0)
 
-    if result["confidence"] < MIN_CONFIDENCE or confidence_to_odds(result["confidence"]) < MIN_ODDS:
+    if result["confidence"] < MIN_CONFIDENCE:
         return None
 
     current_total = live.home_corners + live.away_corners

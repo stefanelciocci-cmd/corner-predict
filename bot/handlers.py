@@ -143,6 +143,77 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def cmd_testlive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Force-analyze all watched matches right now, ignoring checkpoints and thresholds."""
+    user = update.effective_user
+    db_user = get_user(user.id)
+    if not db_user or not db_user["is_active"]:
+        await update.message.reply_text("Authenticate first.")
+        return
+
+    import aiohttp
+    from data import api_client
+    from data.database import get_watch_list
+    from analysis.features import MatchContext, compute_derived_signals
+    from analysis.scorer import score_signals
+
+    watch = get_watch_list()
+    if not watch:
+        await update.message.reply_text("Watch list is empty. Run /scan first.")
+        return
+
+    await update.message.reply_text(f"🔬 Force-analyzing {len(watch)} watched match(es)...")
+
+    async with aiohttp.ClientSession() as session:
+        live_fixtures = await api_client.get_live_fixtures(session)
+        live_by_id = {api_client.get_fixture_id(f): f for f in live_fixtures}
+
+        for watched in watch:
+            fixture_id = watched["fixture_id"]
+            fixture = live_by_id.get(fixture_id) or await api_client.get_fixture_by_id(session, fixture_id)
+            if not fixture:
+                await update.message.reply_text(f"⚠️ {watched['home_team']} vs {watched['away_team']}: fixture not found")
+                continue
+
+            status = api_client.get_fixture_status(fixture)
+            stats_list = await api_client.get_fixture_statistics(session, fixture_id)
+            live_stats = api_client.build_live_stats(fixture, stats_list)
+            home, away = api_client.get_fixture_teams(fixture)
+            league_id = fixture.get("league", {}).get("id", 0)
+
+            home_profile = await api_client.build_team_profile(session, home.get("id"), league_id)
+            away_profile = await api_client.build_team_profile(session, away.get("id"), league_id)
+
+            ctx = MatchContext(
+                fixture_id=fixture_id,
+                home_team=watched["home_team"],
+                away_team=watched["away_team"],
+                league_id=league_id,
+                league_name=watched["league_name"],
+                match_datetime=watched["match_datetime"],
+                home_profile=home_profile,
+                away_profile=away_profile,
+                live=live_stats,
+                last_alert_minute=None,
+                pre_match_expected_corners=watched.get("pre_match_expected", 0),
+            )
+
+            signals = compute_derived_signals(ctx)
+            signals["_matches_played"] = home_profile.matches_played + away_profile.matches_played
+            result = score_signals(signals, is_live=True)
+            proj = signals.get("projected_corners_live", 0)
+            current = (live_stats.home_corners + live_stats.away_corners) if live_stats else 0
+
+            await update.message.reply_text(
+                f"📊 *{watched['home_team']} vs {watched['away_team']}*\n"
+                f"Status: `{status}` | Minute: {live_stats.minute if live_stats else '?'}\n"
+                f"Corners now: {current} | Projected: {proj:.1f}\n"
+                f"Confidence: *{result['confidence']*100:.1f}%* (threshold: 52%)\n"
+                f"Score: {result['score']:.3f}",
+                parse_mode="Markdown"
+            )
+
+
 async def cmd_resolve(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Manually trigger result checking for all pending predictions."""
     user = update.effective_user
